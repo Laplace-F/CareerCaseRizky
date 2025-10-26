@@ -1,0 +1,856 @@
+<!-- Chosen Palette: Warm Neutral & Green -->
+<!-- Application Structure Plan: Saya merancang aplikasi ini sebagai dasbor interaktif satu halaman dengan 4 bagian utama yang dapat diakses melalui navigasi sticky: 'Ringkasan' (visi & misi), 'Prioritas Karier' (perbandingan interaktif opsi pekerjaan), 'Peta Jalan' (timeline 3-fase yang dapat diklik), dan 'Proyeksi Modal' (visualisasi data). Struktur ini dipilih untuk mengubah dokumen linear menjadi pengalaman eksplorasi non-linear. Pengguna dapat langsung melompat ke bagian yang paling relevan bagi mereka, membandingkan data secara dinamis (misalnya, opsi pekerjaan), dan mencerna rencana SMART yang padat melalui UI tab yang lebih mudah dikelola, sehingga meningkatkan pemahaman dan interaksi. -->
+<!-- Visualization & Content Choices: [Visi & Misi (Teks) -> Goal: Inform -> HTML/Tailwind Cards -> Interaction: Static -> Justification: Menetapkan konteks utama dengan cepat.] | [Prioritas Pekerjaan (Teks Perbandingan) -> Goal: Compare -> HTML/JS Tabs -> Interaction: OnClick (Show/Hide Details) -> Justification: Mengubah daftar statis menjadi alat perbandingan interaktif untuk memahami logika keputusan.] | [Rencana SMART 10 Tahun (Tabel) -> Goal: Organize/Change -> Nested HTML/JS Tabs (per Fase, per Kategori) -> Interaction: OnClick (Show/Hide Details) -> Justification: Memecah tabel data yang sangat padat menjadi bagian-bagian kecil yang dapat dikelola dan dinavigasi.] | [Proyeksi Modal (Angka) -> Goal: Change (over time) -> Chart.js Line Chart -> Interaction: Hover Tooltips -> Justification: Visualisasi adalah cara terbaik untuk menampilkan pertumbuhan finansial dari waktu ke waktu. Ditempatkan di .chart-container yang responsif.] -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dasbor Rencana Karier - Rizky Ananta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        max-width: 768px;
+        margin-left: auto;
+        margin-right: auto;
+        height: 350px;
+        max-height: 400px;
+      }
+      @media (min-width: 768px) {
+        .chart-container {
+          height: 400px;
+        }
+      }
+      .priority-tab-btn.active {
+        background-color: #059669;
+        color: #ffffff;
+        font-weight: 600;
+      }
+      .phase-tab-btn.active {
+        background-color: #d1fae5;
+        color: #065f46;
+        font-weight: 600;
+      }
+      .phase-content {
+        display: none;
+      }
+      .phase-content.active {
+        display: block;
+      }
+      .priority-content {
+        display: none;
+      }
+      .priority-content.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-stone-800 antialiased">
+    <header
+      class="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm shadow-sm"
+    >
+      <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+          <div class="flex-shrink-0">
+            <span class="text-xl font-bold text-emerald-700">Rizky Ananta</span>
+          </div>
+          <div class="hidden md:block">
+            <div class="ml-10 flex items-baseline space-x-4">
+              <a
+                href="#ringkasan"
+                class="px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+                >Ringkasan</a
+              >
+              <a
+                href="#karier"
+                class="px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+                >Prioritas Karier</a
+              >
+              <a
+                href="#peta-jalan"
+                class="px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+                >Peta Jalan</a
+              >
+              <a
+                href="#modal"
+                class="px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+                >Proyeksi Modal</a
+              >
+            </div>
+          </div>
+          <div class="md:hidden">
+            <button
+              id="mobile-menu-btn"
+              class="inline-flex items-center justify-center p-2 rounded-md text-stone-500 hover:text-emerald-600 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+            >
+              <span class="sr-only">Buka menu</span>
+              <svg
+                class="block h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </nav>
+      <div id="mobile-menu" class="hidden md:hidden">
+        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          <a
+            href="#ringkasan"
+            class="block px-3 py-2 rounded-md text-base font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+            >Ringkasan</a
+          >
+          <a
+            href="#karier"
+            class="block px-3 py-2 rounded-md text-base font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+            >Prioritas Karier</a
+          >
+          <a
+            href="#peta-jalan"
+            class="block px-3 py-2 rounded-md text-base font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+            >Peta Jalan</a
+          >
+          <a
+            href="#modal"
+            class="block px-3 py-2 rounded-md text-base font-medium text-stone-600 hover:text-emerald-600 hover:bg-stone-100"
+            >Proyeksi Modal</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <section id="ringkasan" class="scroll-m-20 mb-16">
+        <div class="text-center">
+          <h1
+            class="text-3xl font-bold tracking-tight text-emerald-700 sm:text-4xl"
+          >
+            Rencana Aksi Karier
+          </h1>
+          <p class="mt-4 text-lg leading-8 text-stone-600">
+            Sebuah dasbor untuk memvisualisasikan visi, misi, dan peta jalan
+            strategis 10 tahun ke depan.
+          </p>
+        </div>
+
+        <div class="mt-12 bg-white p-8 rounded-2xl shadow-lg">
+          <h2 class="text-2xl font-semibold text-center text-stone-800">
+            Visi Jangka Panjang
+          </h2>
+          <p class="mt-3 text-center text-lg text-stone-600 max-w-3xl mx-auto">
+            "Mendirikan startup
+            <span class="font-semibold text-emerald-600">Green-Tech</span>
+            berbasis AI yang fokus pada optimalisasi dan transparansi rantai
+            pasok daur ulang plastik di Indonesia."
+          </p>
+        </div>
+
+        <div class="mt-12">
+          <h2 class="text-2xl font-semibold text-center text-stone-800 mb-8">
+            Misi 10 Tahun: Tiga Pilar Utama
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div
+              class="bg-white p-6 rounded-xl shadow-lg border border-stone-100"
+            >
+              <div
+                class="flex justify-center items-center h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 text-2xl font-bold"
+              >
+                🧠
+              </div>
+              <h3 class="mt-4 text-xl font-semibold text-stone-800">
+                1. Keterampilan (Skills)
+              </h3>
+              <p class="mt-2 text-stone-600">
+                Menguasai keahlian teknis (Data/AI), manajemen produk, dan
+                kepemimpinan eksekutif.
+              </p>
+            </div>
+            <div
+              class="bg-white p-6 rounded-xl shadow-lg border border-stone-100"
+            >
+              <div
+                class="flex justify-center items-center h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 text-2xl font-bold"
+              >
+                💰
+              </div>
+              <h3 class="mt-4 text-xl font-semibold text-stone-800">
+                2. Modal (Capital)
+              </h3>
+              <p class="mt-2 text-stone-600">
+                Mengakumulasi dana awal (seed funding) melalui pekerjaan penuh
+                waktu dan investasi disiplin.
+              </p>
+            </div>
+            <div
+              class="bg-white p-6 rounded-xl shadow-lg border border-stone-100"
+            >
+              <div
+                class="flex justify-center items-center h-12 w-12 rounded-full bg-emerald-100 text-emerald-700 text-2xl font-bold"
+              >
+                🤝
+              </div>
+              <h3 class="mt-4 text-xl font-semibold text-stone-800">
+                3. Jaringan (Network)
+              </h3>
+              <p class="mt-2 text-stone-600">
+                Membangun koneksi di sektor *waste management*, FMCG, dan
+                komunitas teknologi.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="my-16 border-stone-200" />
+
+      <section id="karier" class="scroll-m-20 mb-16">
+        <h2 class="text-3xl font-bold text-center text-stone-800">
+          Analisis Prioritas Karier
+        </h2>
+        <p class="mt-4 text-lg text-center text-stone-600 max-w-3xl mx-auto">
+          Langkah pertama adalah memilih pekerjaan yang menjadi akselerator
+          terkuat untuk pembelajaran dan akumulasi modal. Klik setiap opsi untuk
+          melihat analisisnya.
+        </p>
+
+        <div class="mt-10">
+          <div class="flex flex-wrap justify-center gap-2 md:gap-4 mb-6">
+            <button
+              data-target="recyclex"
+              class="priority-tab-btn active w-full sm:w-auto text-center px-4 py-3 rounded-lg border border-emerald-600 text-emerald-700 transition-all duration-200 ease-in-out hover:bg-emerald-50"
+            >
+              Prioritas 1: RecycleX
+            </button>
+            <button
+              data-target="mayer"
+              class="priority-tab-btn w-full sm:w-auto text-center px-4 py-3 rounded-lg border border-emerald-600 text-emerald-700 transition-all duration-200 ease-in-out hover:bg-emerald-50"
+            >
+              Prioritas 2: PT Mayer Indonesia
+            </button>
+            <button
+              data-target="greenconsult"
+              class="priority-tab-btn w-full sm:w-auto text-center px-4 py-3 rounded-lg border border-emerald-600 text-emerald-700 transition-all duration-200 ease-in-out hover:bg-emerald-50"
+            >
+              Prioritas 3: PT GreenConsult
+            </button>
+            <button
+              data-target="unilover"
+              class="priority-tab-btn w-full sm:w-auto text-center px-4 py-3 rounded-lg border border-emerald-600 text-emerald-700 transition-all duration-200 ease-in-out hover:bg-emerald-50"
+            >
+              Prioritas 4: PT Unilover
+            </button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 min-h-[200px]">
+            <div id="priority-recyclex" class="priority-content active">
+              <h3 class="text-2xl font-semibold text-emerald-700">
+                Prioritas 1: RecycleX (AI Startup)
+              </h3>
+              <p class="mt-2 text-lg font-medium text-stone-700">
+                Posisi: Program Management Officer
+              </p>
+              <p class="mt-4 text-stone-600">
+                <span class="font-semibold text-stone-800"
+                  >Alasan Utama (Akselerasi Visi):</span
+                >
+                Ini adalah satu-satunya pilihan yang menempatkan Rizky langsung
+                di persimpangan tiga minat utamanya: AI, *circular economy*, dan
+                lingkungan startup. Pengalaman langsung mengelola proyek
+                *green-tech* dan memahami dinamika startup (termasuk potensi
+                ESOP) adalah pembelajaran yang tidak ternilai. Ini secara
+                langsung mengatasi kelemahannya (fokus pada eksekusi) dan
+                mempercepat pemahaman pasar.
+              </p>
+            </div>
+            <div id="priority-mayer" class="priority-content">
+              <h3 class="text-2xl font-semibold text-stone-800">
+                Prioritas 2: PT Mayer Indonesia
+              </h3>
+              <p class="mt-2 text-lg font-medium text-stone-700">
+                Posisi: Management Trainee (MT)
+              </p>
+              <p class="mt-4 text-stone-600">
+                <span class="font-semibold text-stone-800"
+                  >Alasan Utama (Modal & Struktur):</span
+                >
+                Pilihan ini adalah kompromi terbaik antara visi Rizky dan
+                harapan keluarga. Gaji yang tinggi (Rp 11 juta/bulan) akan
+                menjadi bahan bakar utama untuk rencana investasinya. Program
+                rotasi (terutama di Operasi/Rantai Pasok) akan memberinya
+                pemahaman mendalam tentang logistik perusahaan besar—yang
+                nantinya akan menjadi klien startup-nya.
+              </p>
+            </div>
+            <div id="priority-greenconsult" class="priority-content">
+              <h3 class="text-2xl font-semibold text-stone-800">
+                Prioritas 3: PT GreenConsult
+              </h3>
+              <p class="mt-2 text-lg font-medium text-stone-700">
+                Posisi: Associate Consultant
+              </p>
+              <p class="mt-4 text-stone-600">
+                <span class="font-semibold text-stone-800"
+                  >Alasan Utama (Pengembangan Keterampilan):</span
+                >
+                Rizky sudah mengenal lingkungan ini. Keuntungannya adalah
+                paparan lintas industri yang cepat. Namun, risiko *burnout*
+                sangat tinggi, yang dapat mengganggu rencananya untuk belajar di
+                *bootcamp* dan mengelola investasi secara disiplin.
+              </p>
+            </div>
+            <div id="priority-unilover" class="priority-content">
+              <h3 class="text-2xl font-semibold text-stone-800">
+                Prioritas 4: PT Unilover Indonesia
+              </h3>
+              <p class="mt-2 text-lg font-medium text-stone-700">
+                Posisi: Sustainability Analyst
+              </p>
+              <p class="mt-4 text-stone-600">
+                <span class="font-semibold text-stone-800"
+                  >Alasan Utama (Kestabilan):</span
+                >
+                Ini adalah pilihan paling stabil dengan gaji baik. Namun,
+                "struktur kerja yang kaku" dan "ruang inovasi terbatas" adalah
+                antitesis dari apa yang dibutuhkan seorang calon pendiri
+                startup. Peran ini terlalu fokus pada pelaporan (dampak) dan
+                bukan pada penciptaan (teknologi).
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="my-16 border-stone-200" />
+
+      <section id="peta-jalan" class="scroll-m-20 mb-16">
+        <h2 class="text-3xl font-bold text-center text-stone-800">
+          Peta Jalan 10 Tahun (SMART)
+        </h2>
+        <p class="mt-4 text-lg text-center text-stone-600 max-w-3xl mx-auto">
+          Rencana ini dibagi menjadi tiga fase utama. Gunakan tab di bawah untuk
+          menjelajahi detail dari setiap kategori dalam setiap fase.
+        </p>
+
+        <div class="mt-10 space-y-12">
+          <!-- Fase 1 -->
+          <div
+            class="bg-white rounded-xl shadow-lg p-6 md:p-8 border-l-4 border-emerald-500"
+          >
+            <h3 class="text-2xl font-bold text-stone-800">
+              Fase 1: Fondasi Keterampilan & Akumulasi Modal (Tahun 0 - 3)
+            </h3>
+            <p class="mt-2 text-stone-600">
+              Fokus: Menambal kesenjangan keterampilan teknis, memulai investasi
+              agresif, dan mendapatkan pengalaman korporat/startup pertama.
+            </p>
+            <div class="mt-6 border-b border-stone-200">
+              <nav
+                class="-mb-px flex flex-wrap gap-2 sm:gap-4"
+                aria-label="Tabs"
+              >
+                <button
+                  data-target="p1-karier"
+                  class="phase-tab-btn active px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Karier
+                </button>
+                <button
+                  data-target="p1-keterampilan"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Keterampilan Teknis
+                </button>
+                <button
+                  data-target="p1-investasi"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Investasi (Modal)
+                </button>
+              </nav>
+            </div>
+            <div class="mt-6">
+              <div id="p1-karier" class="phase-content active">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Mendapatkan pekerjaan pertama (Prioritas 1 atau 2) dan
+                    mencapai kinerja tinggi.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Diterima kerja dalam 3 bulan ke depan. Mendapat 1x
+                    promosi/penyesuaian gaji signifikan.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 0 - 3</dd>
+                </dl>
+              </div>
+              <div id="p1-keterampilan" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menguasai dasar-dasar *Data Science* & AI.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menyelesaikan 2 *bootcamp* intensif: 1. Data Science
+                    (Python, SQL, Power BI) 2. AI/ML for Business.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Achievable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Dilakukan di luar jam kerja (malam/akhir pekan), dibiayai
+                    dari gaji pertama.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 1 - 2</dd>
+                </dl>
+              </div>
+              <div id="p1-investasi" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Memulai investasi bulanan yang disiplin untuk modal awal
+                    startup.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menginvestasikan min. 30% dari gaji bulanan (sekitar Rp 2jt
+                    - 3.5jt/bln) ke portofolio.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Relevant</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Membangun modal adalah syarat mutlak untuk mendirikan
+                    startup & mengurangi risiko.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Dimulai di Bulan ke-2 bekerja
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fase 2 -->
+          <div
+            class="bg-white rounded-xl shadow-lg p-6 md:p-8 border-l-4 border-emerald-500"
+          >
+            <h3 class="text-2xl font-bold text-stone-800">
+              Fase 2: Spesialisasi & Kepemimpinan (Tahun 4 - 7)
+            </h3>
+            <p class="mt-2 text-stone-600">
+              Fokus: Beralih dari peran junior ke peran manajerial/spesialis,
+              memperdalam keahlian, dan mengakselerasi pertumbuhan investasi.
+            </p>
+            <div class="mt-6 border-b border-stone-200">
+              <nav
+                class="-mb-px flex flex-wrap gap-2 sm:gap-4"
+                aria-label="Tabs"
+              >
+                <button
+                  data-target="p2-karier"
+                  class="phase-tab-btn active px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Karier
+                </button>
+                <button
+                  data-target="p2-keterampilan"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Keterampilan Lanjutan
+                </button>
+                <button
+                  data-target="p2-validasi"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Validasi Ide
+                </button>
+              </nav>
+            </div>
+            <div class="mt-6">
+              <div id="p2-karier" class="phase-content active">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Mencapai posisi *mid-level manager* (mis: Project Manager,
+                    AI Product Manager, atau Senior Consultant).
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Memimpin tim (minimal 3 orang) dan mengelola proyek bernilai
+                    > Rp 500 Juta.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 4 - 7</dd>
+                </dl>
+              </div>
+              <div id="p2-keterampilan" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menguasai manajemen pengembangan produk teknologi.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menyelesaikan 1 *bootcamp* / sertifikasi lanjutan: *Product
+                    Management* atau *Growth Hacking*.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 5</dd>
+                </dl>
+              </div>
+              <div id="p2-validasi" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Mulai memvalidasi ide startup secara paruh waktu.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Melakukan min. 50 wawancara validasi pasar (dengan pemulung,
+                    bank sampah, pabrik daur ulang).
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 6 - 7</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fase 3 -->
+          <div
+            class="bg-white rounded-xl shadow-lg p-6 md:p-8 border-l-4 border-emerald-500"
+          >
+            <h3 class="text-2xl font-bold text-stone-800">
+              Fase 3: Peluncuran & Pertumbuhan Awal (Tahun 8 - 10)
+            </h3>
+            <p class="mt-2 text-stone-600">
+              Fokus: Menggunakan modal yang terkumpul, jaringan yang terbangun,
+              dan ide yang tervalidasi untuk meluncurkan *Minimum Viable
+              Product* (MVP).
+            </p>
+            <div class="mt-6 border-b border-stone-200">
+              <nav
+                class="-mb-px flex flex-wrap gap-2 sm:gap-4"
+                aria-label="Tabs"
+              >
+                <button
+                  data-target="p3-transisi"
+                  class="phase-tab-btn active px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Transisi
+                </button>
+                <button
+                  data-target="p3-peluncuran"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Modal & Peluncuran
+                </button>
+                <button
+                  data-target="p3-tim"
+                  class="phase-tab-btn px-3 py-3 sm:px-4 text-sm font-medium text-stone-600 rounded-t-lg hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  Tim & Jaringan
+                </button>
+              </nav>
+            </div>
+            <div class="mt-6">
+              <div id="p3-transisi" class="phase-content active">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Mengundurkan diri dari pekerjaan *full-time* untuk fokus
+                    membangun startup.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Pengunduran diri dilakukan HANYA JIKA target dana & validasi
+                    ide tercapai.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Awal Tahun ke-8</dd>
+                </dl>
+              </div>
+              <div id="p3-peluncuran" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Meluncurkan MVP dan mendaftarkan badan hukum perusahaan.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Menggunakan modal investasi yang terkumpul sebagai dana
+                    operasional 12 bulan pertama.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 8</dd>
+                </dl>
+              </div>
+              <div id="p3-tim" class="phase-content">
+                <dl class="space-y-4">
+                  <dt class="font-semibold text-stone-700">Specific</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Merekrut 1-2 *co-founder* (terutama *technical co-founder*).
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Measurable</dt>
+                  <dd class="ml-4 text-stone-600">
+                    Tim inti terbentuk dan produk digunakan oleh 5-10
+                    klien/mitra awal.
+                  </dd>
+                  <dt class="font-semibold text-stone-700">Time-bound</dt>
+                  <dd class="ml-4 text-stone-600">Tahun 8 - 10</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="my-16 border-stone-200" />
+
+      <section id="modal" class="scroll-m-20 mb-16">
+        <h2 class="text-3xl font-bold text-center text-stone-800">
+          Proyeksi Akumulasi Modal
+        </h2>
+        <p class="mt-4 text-lg text-center text-stone-600 max-w-3xl mx-auto">
+          Visualisasi pertumbuhan modal yang diproyeksikan selama 8 tahun
+          melalui investasi disiplin, yang akan menjadi *Seed Capital* untuk
+          startup.
+        </p>
+
+        <div class="mt-10 bg-white rounded-xl shadow-lg p-6 md:p-8">
+          <div class="chart-container">
+            <canvas id="modalChart"></canvas>
+          </div>
+
+          <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="text-xl font-semibold text-stone-800">
+                Asumsi Proyeksi
+              </h4>
+              <ul class="mt-3 list-disc list-inside text-stone-600 space-y-2">
+                <li>Gaji awal rata-rata: Rp 8.500.000 / bulan</li>
+                <li>Tingkat Investasi: 35% dari gaji (Rp 3.000.000 / bulan)</li>
+                <li>Kenaikan investasi tahunan: 10% (konservatif)</li>
+                <li>Instrumen: Portofolio diversifikasi (Saham, Obligasi)</li>
+                <li>Perkiraan Imbal Hasil (ROI): 9% per tahun (majemuk)</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="text-xl font-semibold text-stone-800">
+                Hasil & Penggunaan Dana
+              </h4>
+              <p class="mt-3 text-stone-600">
+                Perkiraan total dana pada tahun ke-8 mencapai:
+              </p>
+              <p class="mt-2 text-3xl font-bold text-emerald-600">
+                ~Rp 600 - 650 Juta
+              </p>
+              <p class="mt-3 text-stone-600">
+                Dana ini akan digunakan sebagai
+                <span class="font-semibold">*Seed Capital*</span> untuk
+                membiayai pengembangan produk (MVP), biaya operasional, dan gaji
+                tim inti selama 12-18 bulan pertama tanpa bergantung pada
+                investor eksternal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bg-white border-t border-stone-200 mt-16">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+        <p class="text-sm text-stone-500">
+          Dasbor Interaktif ini dibuat berdasarkan Rencana Aksi Karier Rizky
+          Ananta.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+        const mobileMenu = document.getElementById("mobile-menu");
+        if (mobileMenuBtn) {
+          mobileMenuBtn.addEventListener("click", () => {
+            const isHidden = mobileMenu.classList.contains("hidden");
+            if (isHidden) {
+              mobileMenu.classList.remove("hidden");
+            } else {
+              mobileMenu.classList.add("hidden");
+            }
+          });
+        }
+
+        document.querySelectorAll("#mobile-menu a").forEach((link) => {
+          link.addEventListener("click", () => {
+            mobileMenu.classList.add("hidden");
+          });
+        });
+
+        const priorityTabBtns = document.querySelectorAll(".priority-tab-btn");
+        const priorityContents = document.querySelectorAll(".priority-content");
+
+        priorityTabBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const targetId = `priority-${btn.dataset.target}`;
+
+            priorityTabBtns.forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            priorityContents.forEach((content) => {
+              if (content.id === targetId) {
+                content.classList.add("active");
+              } else {
+                content.classList.remove("active");
+              }
+            });
+          });
+        });
+
+        const phaseTabBtns = document.querySelectorAll(".phase-tab-btn");
+        phaseTabBtns.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const targetId = btn.dataset.target;
+            const parentContainer = btn.closest(".border-l-4");
+
+            parentContainer
+              .querySelectorAll(".phase-tab-btn")
+              .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            parentContainer
+              .querySelectorAll(".phase-content")
+              .forEach((content) => {
+                if (content.id === targetId) {
+                  content.classList.add("active");
+                } else {
+                  content.classList.remove("active");
+                }
+              });
+          });
+        });
+
+        const ctx = document.getElementById("modalChart");
+        if (ctx) {
+          const labels = [
+            "Tahun 1",
+            "Tahun 2",
+            "Tahun 3",
+            "Tahun 4",
+            "Tahun 5",
+            "Tahun 6",
+            "Tahun 7",
+            "Tahun 8",
+          ];
+          const principalData = [
+            36, 75.6, 119.2, 167.1, 219.7, 277.8, 342.3, 412.3,
+          ];
+          const totalData = [39.2, 85.9, 141.4, 207, 284, 374, 480, 605];
+
+          new Chart(ctx.getContext("2d"), {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: "Total Modal Diinvestasikan (Pokok)",
+                  data: principalData,
+                  borderColor: "#6b7280",
+                  backgroundColor: "#6b7280",
+                  fill: false,
+                  tension: 0.1,
+                  borderDash: [5, 5],
+                },
+                {
+                  label: "Perkiraan Total Dana (dgn ROI 9%)",
+                  data: totalData,
+                  borderColor: "#059669",
+                  backgroundColor: "#059669",
+                  fill: true,
+                  backgroundColor: "rgba(6, 182, 115, 0.1)",
+                  tension: 0.2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: "bottom",
+                  labels: {
+                    padding: 20,
+                  },
+                },
+                tooltip: {
+                  mode: "index",
+                  intersect: false,
+                  callbacks: {
+                    label: function (context) {
+                      let label = context.dataset.label || "";
+                      if (label) {
+                        label += ": ";
+                      }
+                      if (context.parsed.y !== null) {
+                        label += "Rp " + context.parsed.y.toFixed(1) + " Jt";
+                      }
+                      return label;
+                    },
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: "Jumlah (dalam Juta Rupiah)",
+                  },
+                  ticks: {
+                    callback: function (value, index, values) {
+                      return "Rp " + value + " Jt";
+                    },
+                  },
+                },
+                x: {
+                  title: {
+                    display: true,
+                    text: "Tahun Investasi",
+                  },
+                },
+              },
+              interaction: {
+                intersect: false,
+                mode: "index",
+              },
+            },
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
